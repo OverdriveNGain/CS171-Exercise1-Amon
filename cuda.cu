@@ -2,14 +2,16 @@
 #include <cuda.h>
 
 __global__
-void kernel_1t1e(float *matrixOut, float *matrix1, float *matrix2, int length1D, int matrixDimLen){
+void kernel_1t1e(float *matrixOut, float *matrix1, float *matrix2, int matrixDimLen){
+    int length1D = matrixDimLen * matrixDimLen;
     int i = threadIdx.x + blockDim.x * blockIdx.x;
 
     if (i < length1D) matrixOut[i]  = matrix1[i] + matrix2[i];
 }
 
 __global__
-void kernel_1t1r(float *matrixOut, float *matrix1, float *matrix2, int length1D, int matrixDimLen){
+void kernel_1t1r(float *matrixOut, float *matrix1, float *matrix2, int matrixDimLen){
+    int length1D = matrixDimLen * matrixDimLen;
     int i = threadIdx.x + blockDim.x * blockIdx.x;
 
     for (int j = 0; j < matrixDimLen; j++)
@@ -17,7 +19,8 @@ void kernel_1t1r(float *matrixOut, float *matrix1, float *matrix2, int length1D,
 }
 
 __global__
-void kernel_1t1c(float *matrixOut, float *matrix1, float *matrix2, int length1D, int matrixDimLen){
+void kernel_1t1c(float *matrixOut, float *matrix1, float *matrix2, int matrixDimLen){
+    int length1D = matrixDimLen * matrixDimLen;
     int i = threadIdx.x + blockDim.x * blockIdx.x;
 
     for (int j = 0; j < matrixDimLen; j++){
@@ -57,9 +60,11 @@ void matrixAdd(float*** output, float*** matrix1, float*** matrix2, int dimensio
 
     // Launch kernel
     // make more reasonable
-    // kernel_1t1e<<< 1, flattenedLength >>>(matrixOutput_d, matrix1_d, matrix2_d, flattenedLength, dimensionLength);
-    // kernel_1t1r<<< 1, flattenedLength >>>(matrixOutput_d, matrix1_d, matrix2_d, flattenedLength, dimensionLength);
-    kernel_1t1c<<< 1, flattenedLength >>>(matrixOutput_d, matrix1_d, matrix2_d, flattenedLength, dimensionLength);
+    int threadBlockCount = ceil(flattenedLength/1024.0);
+    int threadCountPerBlock = 1024;
+    kernel_1t1e<<< threadBlockCount, threadCountPerBlock >>>(matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
+    // kernel_1t1r<<< threadBlockCount, threadCountPerBlock >>>(matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
+    // kernel_1t1c<<< threadBlockCount, threadCountPerBlock >>>(matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
 
     // Copy data from device output array to flattened host array
     cudaMemcpy(outputFlat, matrixOutput_d, arrayByteSize, cudaMemcpyDeviceToHost);
