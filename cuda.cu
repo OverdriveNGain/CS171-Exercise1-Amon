@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <cuda.h>
+#include <time.h>
 
 __global__
 void kernel_1t1e(float *matrixOut, float *matrix1, float *matrix2, int matrixDimLen){
@@ -11,21 +12,23 @@ void kernel_1t1e(float *matrixOut, float *matrix1, float *matrix2, int matrixDim
 
 __global__
 void kernel_1t1r(float *matrixOut, float *matrix1, float *matrix2, int matrixDimLen){
-    int length1D = matrixDimLen * matrixDimLen;
     int i = threadIdx.x + blockDim.x * blockIdx.x;
 
-    for (int j = 0; j < matrixDimLen; j++)
-        if (i + j < length1D) matrixOut[i + j]  = matrix1[i + j] + matrix2[i + j];
+    if (i % matrixDimLen == 0)
+        for (int j = 0; j < matrixDimLen; j++)
+            matrixOut[i + j]  = matrix1[i + j] + matrix2[i + j];
 }
 
 __global__
 void kernel_1t1c(float *matrixOut, float *matrix1, float *matrix2, int matrixDimLen){
-    int length1D = matrixDimLen * matrixDimLen;
     int i = threadIdx.x + blockDim.x * blockIdx.x;
 
-    for (int j = 0; j < matrixDimLen; j++){
-        int index = i + j * matrixDimLen;
-        if (index < length1D) matrixOut[index]  = matrix1[index] + matrix2[index];
+    if (i < matrixDimLen){
+        int index = i;
+        for (int j = 0; j < matrixDimLen; j++){
+            matrixOut[index]  = matrix1[index] + matrix2[index];
+            index += matrixDimLen;
+        }
     }
 }
 
@@ -62,8 +65,8 @@ void matrixAdd(float*** output, float*** matrix1, float*** matrix2, int dimensio
     // make more reasonable
     int threadBlockCount = ceil(flattenedLength/1024.0);
     int threadCountPerBlock = 1024;
-    kernel_1t1e<<< threadBlockCount, threadCountPerBlock >>>(matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
-    // kernel_1t1r<<< threadBlockCount, threadCountPerBlock >>>(matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
+    // kernel_1t1e<<< threadBlockCount, threadCountPerBlock >>>(matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
+    kernel_1t1r<<< threadBlockCount, threadCountPerBlock >>>(matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
     // kernel_1t1c<<< threadBlockCount, threadCountPerBlock >>>(matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
 
     // Copy data from device output array to flattened host array
@@ -123,7 +126,7 @@ void matrixInitRandomValues(float*** matrix, int dimensionLength, float maxValue
 int main()
 {
     // Initialization of variables
-    int dimensionLength = 3;
+    int dimensionLength = 5000;
     size_t arrayByteSizeP = dimensionLength*sizeof(float*);
     size_t arrayByteSizeF = dimensionLength*sizeof(float);
     float **matrix1;
@@ -140,19 +143,32 @@ int main()
         matrixOutput[i] = (float*) malloc(arrayByteSizeF);
     }
 
-    // Assignment of random values to matrix 1 and 2
-    matrixInitRandomValues(&matrix1, dimensionLength, 100);
-    matrixInitRandomValues(&matrix2, dimensionLength, 100);
+    int repetitions = 1;
+    for (int i = 0; i < repetitions; i++){
+        // Assignment of random values to matrix 1 and 2
+        matrixInitRandomValues(&matrix1, dimensionLength, 100);
+        matrixInitRandomValues(&matrix2, dimensionLength, 100);
 
-    // Initial printing of values of matrix 1 and 2
-    matrixPrint(&matrix1, dimensionLength);
-    matrixPrint(&matrix2, dimensionLength);
+        // Initial printing of values of matrix 1 and 2
+        // matrixPrint(&matrix1, dimensionLength);
+        // matrixPrint(&matrix2, dimensionLength);
 
-    // Adding of matrices
-    matrixAdd(&matrixOutput, &matrix1, &matrix2, dimensionLength);
+        // Start recording time
+        // https://www.techiedelight.com/find-execution-time-c-program/
+        double time_spent = 0.0;
+        clock_t begin = clock();
 
-    // Printing of output matrix
-    matrixPrint(&matrixOutput, dimensionLength);
+        // Adding of matrices
+        matrixAdd(&matrixOutput, &matrix1, &matrix2, dimensionLength);
+
+        // Stop recording time and get elapsed time
+        clock_t end = clock();
+        time_spent += (double)(end - begin) / CLOCKS_PER_SEC;
+        printf("The elapsed time is %f seconds\n", time_spent);
+
+        // Printing of output matrix
+        // matrixPrint(&matrixOutput, dimensionLength);
+    }
 
     // Free CPU memory
     for (int i = 0; i < dimensionLength; i++){
