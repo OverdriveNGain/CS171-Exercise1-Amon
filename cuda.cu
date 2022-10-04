@@ -127,6 +127,7 @@ void matrixInitRandomValues(float*** matrix, int dimensionLength, float maxValue
 // Main program
 int main()
 {
+    // Initialization of variables
     int dimensionLength = 3;
     size_t arrayByteSizeP = dimensionLength*sizeof(float*);
     size_t arrayByteSizeF = dimensionLength*sizeof(float);
@@ -134,6 +135,7 @@ int main()
     float **matrix2;
     float **matrixOutput;
 
+    // Memory allocation of matrices
     matrix1 = (float**) malloc(arrayByteSizeP);
     matrix2 = (float**) malloc(arrayByteSizeP);
     matrixOutput = (float**) malloc(arrayByteSizeP);
@@ -143,14 +145,18 @@ int main()
         matrixOutput[i] = (float*) malloc(arrayByteSizeF);
     }
 
+    // Assignment of random values to matrix 1 and 2
     matrixInitRandomValues(&matrix1, dimensionLength, 100);
     matrixInitRandomValues(&matrix2, dimensionLength, 100);
 
+    // Initial printing of values of matrix 1 and 2
     matrixPrint(&matrix1, dimensionLength);
     matrixPrint(&matrix2, dimensionLength);
 
+    // Adding of matrices
     matrixAdd(&matrixOutput, &matrix1, &matrix2, dimensionLength);
 
+    // Printing of output matrix
     matrixPrint(&matrixOutput, dimensionLength);
 
     // Free CPU memory
@@ -163,6 +169,6 @@ int main()
     free(matrix2);
     free(matrixOutput);
 
-    printf("SUCCESS!\n");
+    printf("Success!\n");
     return 0;
 }
