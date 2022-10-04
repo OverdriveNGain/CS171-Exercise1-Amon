@@ -88,11 +88,6 @@ void matrixAdd(float*** output, float*** matrix1, float*** matrix2, int dimensio
 }
 
 __host__
-void matrixAlloc(float** matrix, int dimensionLength){
-    *matrix = (float*) malloc(dimensionLength*dimensionLength*sizeof(float));
-}
-
-__host__
 void matrixPrint(float*** matrix, int dimensionLength){
     for (int i = 0; i < dimensionLength; i++){
         if (i == 0)
