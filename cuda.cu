@@ -62,7 +62,6 @@ void matrixAdd(float*** output, float*** matrix1, float*** matrix2, int dimensio
     cudaMemcpy(matrix2_d, matrix2Flat, arrayByteSize, cudaMemcpyHostToDevice);
 
     // Launch kernel
-    // make more reasonable
     int threadBlockCount = ceil(flattenedLength/1024.0);
     int threadCountPerBlock = 1024;
     // kernel_1t1e<<< threadBlockCount, threadCountPerBlock >>>(matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
@@ -165,6 +164,18 @@ int main()
         clock_t end = clock();
         time_spent += (double)(end - begin) / CLOCKS_PER_SEC;
         printf("The elapsed time is %f seconds\n", time_spent);
+
+        // Verifying correctness
+        int incorrectCount = 0;
+        float tol = 0.0001f;
+        for (int j = 0; j < dimensionLength; j++){
+            for (int k = 0; k < dimensionLength; k++){
+                if (fabs((matrix1[j][k] + matrix2[j][k]) - matrixOutput[j][k]) > tol){
+                    incorrectCount++;
+                }
+            }
+        }
+        printf("Incorrect computations: %d\n", incorrectCount);
 
         // Printing of output matrix
         // matrixPrint(&matrixOutput, dimensionLength);
