@@ -1,179 +1,122 @@
 #include <stdio.h>
 #include <cuda.h>
 
-#define N 10000000
+// Kernel
+__global__ void increment_vector(float *matrix1, int dimensionLength)
+{
+    int i = threadIdx.x + blockDim.x * blockIdx.x;
 
-// __global__ void vector_add(float *out, float *a, float *b, int n) {
-//     for(int i = 0; i < n; i++){
-//         out[i] = a[i] + b[i];
-//     }
-// }
-
-void printCharArray(char* charArray, int n){
-    int i = 0;
-    for (i = 0; i < n; i++)
-        printf("%02hhX ", charArray[i]);
+    if (i < dimensionLength*dimensionLength) {
+        matrix1[i] += 1;
+        // printf("%f\n", matrix1[i]);
+    }
 }
 
-void printIntArray(int* arr, int n){
-    int i = 0;
-    printf("[");
-    for (i = 0; i < n; i++){
-        printf("%d", arr[i]);
-        if (i != n -1)
-            printf(", ");
-    }
-    printf("]");
+__global__
+void kernel_1t1e(){
+    
 }
 
-int main(){
-    int dev_count;
-    cudaGetDeviceCount( &dev_count);
+__global__
+void kernel_1t1r(){
+    
+}
 
-    cudaDeviceProp dev_prop;
-    for (int i = 0; i < dev_count; i++) {
-        cudaGetDeviceProperties( &dev_prop, i);
-        // decide if device has sufficient resources and capabilities
-        printf("DEVICE NUMBER %d:\n", i + 1);
-        printf("    accessPolicyMaxWindowSize : %d\n", dev_prop.accessPolicyMaxWindowSize);
-        printf("    asyncEngineCount : %d\n", dev_prop.asyncEngineCount);
-        printf("    canMapHostMemory : %d\n", dev_prop.canMapHostMemory);
-        printf("    canUseHostPointerForRegisteredMem : %d\n", dev_prop.canUseHostPointerForRegisteredMem);
-        printf("    clockRate : %d\n", dev_prop.clockRate);
-        printf("    computeMode : %d\n", dev_prop.computeMode);
-        printf("    computePreemptionSupported : %d\n", dev_prop.computePreemptionSupported);
-        printf("    concurrentKernels : %d\n", dev_prop.concurrentKernels);
-        printf("    concurrentManagedAccess : %d\n", dev_prop.concurrentManagedAccess);
-        printf("    cooperativeLaunch : %d\n", dev_prop.cooperativeLaunch);
-        printf("    cooperativeMultiDeviceLaunch : %d\n", dev_prop.cooperativeMultiDeviceLaunch);
-        printf("    deviceOverlap : %d\n", dev_prop.deviceOverlap);
-        printf("    directManagedMemAccessFromHost : %d\n", dev_prop.directManagedMemAccessFromHost);
-        printf("    globalL1CacheSupported : %d\n", dev_prop.globalL1CacheSupported);
-        printf("    hostNativeAtomicSupported : %d\n", dev_prop.hostNativeAtomicSupported);
-        printf("    integrated : %d\n", dev_prop.integrated);
-        printf("    isMultiGpuBoard : %d\n", dev_prop.isMultiGpuBoard);
-        printf("    kernelExecTimeoutEnabled : %d\n", dev_prop.kernelExecTimeoutEnabled);
-        printf("    l2CacheSize : %d\n", dev_prop.l2CacheSize);
-        printf("    localL1CacheSupported : %d\n", dev_prop.localL1CacheSupported);
+__global__
+void kernel_1t1c(){
+    
+}
 
-        printf("    luid : ");
-        printCharArray(dev_prop.luid, 8);
-        printf("\n");
+__host__
+void matrixAdd(float** output, float** matrix1, float** matrix2, int dimensionLength){
+    size_t arrayByteSize = dimensionLength*dimensionLength*sizeof(float);
 
-        printf("    major : %d\n", dev_prop.major);
-        printf("    managedMemory : %d\n", dev_prop.managedMemory);
-        printf("    maxBlocksPerMultiProcessor : %d\n", dev_prop.maxBlocksPerMultiProcessor);
+    // Allocate memory for arrays d_A, d_B, and d_C on device
+    float *matrix1_d, *matrix2_d, *matrixOutput_d;
+    cudaMalloc(&matrix1_d, arrayByteSize);
+    cudaMalloc(&matrix2_d, arrayByteSize);
+    cudaMalloc(&matrixOutput_d, arrayByteSize);
 
-        printf("    maxGridSize : ");
-        printIntArray(dev_prop.maxGridSize, 3);
-        printf("\n");
+    // Copy data from host arrays A and B to device arrays d_A and d_B
+    // cudaMemcpy(matrix1_d, *matrix1, floatArrSize, cudaMemcpyHostToDevice);
+    cudaMemcpy(matrix1_d, *matrix1, arrayByteSize, cudaMemcpyHostToDevice);
+    // cudaMemcpy(matrix2_d, *matrix2, floatArrSize, cudaMemcpyHostToDevice);
+
+    // Launch kernel
+    increment_vector<<< 1, dimensionLength * dimensionLength >>>(matrix1_d, dimensionLength);
+
+    // Copy data from device array d_C to host array C
+    cudaMemcpy(*matrix1, matrix1_d, arrayByteSize, cudaMemcpyDeviceToHost);
+
+    // Free GPU memory
+    cudaFree(matrix1_d);
+    cudaFree(matrix2_d);
+    cudaFree(matrixOutput_d);
+}
+
+__host__
+void matrixAlloc(float** matrix, int dimensionLength){
+    *matrix = (float*) malloc(dimensionLength*dimensionLength*sizeof(float));
+}
+
+__host__
+void matrixPrint(float** matrix, int dimensionLength){
+    for (int i = 0; i < dimensionLength; i++){
+        if (i == 0)
+            printf("{{ ");
+        else
+            printf(" { ");
         
-        printf("    maxSurface1D : %d\n", dev_prop.maxSurface1D);
+        for (int j = 0; j < dimensionLength; j++){
+            if (j == dimensionLength - 1)
+                printf("%f ", (*matrix)[i * dimensionLength + j]);
+            else
+                printf("%f, ", (*matrix)[i * dimensionLength + j]);
+        }
 
-        printf("    maxSurface1DLayered : ");
-        printIntArray(dev_prop.maxSurface1DLayered, 2);
-        printf("\n");
-
-        printf("    maxSurface2D : ");
-        printIntArray(dev_prop.maxSurface2D, 2);
-        printf("\n");
-
-        printf("    maxSurface2DLayered : ");
-        printIntArray(dev_prop.maxSurface2DLayered, 3);
-        printf("\n");
-
-        printf("    maxSurface3D : ");
-        printIntArray(dev_prop.maxSurface3D, 3);
-        printf("\n");
-
-        printf("    maxSurfaceCubemap : %d", dev_prop.maxSurfaceCubemap);
-        
-        printf("    maxSurfaceCubemapLayered : ");
-        printIntArray(dev_prop.maxSurfaceCubemapLayered, 2);
-        printf("\n");
-
-        printf("    maxTexture1D : %d", dev_prop.maxTexture1D);
-        
-        printf("    maxTexture1DLayered : ");
-        printIntArray(dev_prop.maxTexture1DLayered, 2);
-        printf("\n");
-
-        printf("    maxTexture1DLinear : %d", dev_prop.maxTexture1DLinear);
-        printf("    maxTexture1DMipmap : %d", dev_prop.maxTexture1DMipmap);
-        
-        printf("    maxTexture2D : ");
-        printIntArray(dev_prop.maxTexture2D, 2);
-        printf("\n");
-
-        printf("    maxTexture2DGather : ");
-        printIntArray(dev_prop.maxTexture2DGather, 2);
-        printf("\n");
-
-        printf("    maxTexture2DLayered : ");
-        printIntArray(dev_prop.maxTexture2DLayered, 3);
-        printf("\n");
-
-        printf("    maxTexture2DLinear : ");
-        printIntArray(dev_prop.maxTexture2DLinear, 3);
-        printf("\n");
-
-        printf("    maxTexture2DMipmap : ");
-        printIntArray(dev_prop.maxTexture2DMipmap, 2);
-        printf("\n");
-
-        printf("    maxTexture3D : ");
-        printIntArray(dev_prop.maxTexture3D, 3);
-        printf("\n");
-
-        printf("    maxTexture3DAlt : ");
-        printIntArray(dev_prop.maxTexture3DAlt, 3);
-        printf("\n");
-
-        printf("    maxTextureCubemap : %d", dev_prop.maxTextureCubemap);
-        
-        printf("    maxTextureCubemapLayered : ");
-        printIntArray(dev_prop.maxTextureCubemapLayered, 2);
-        printf("\n");
-
-        printf("    maxThreadsDim : ");
-        printIntArray(dev_prop.maxThreadsDim, 3);
-        printf("\n");
-
-        printf("    maxThreadsPerBlock : %d\n", dev_prop.maxThreadsPerBlock);
-        printf("    maxThreadsPerMultiProcessor : %d\n", dev_prop.maxThreadsPerMultiProcessor);
-        printf("    memPitch : %zu\n", dev_prop.memPitch);
-        printf("    memoryBusWidth : %d\n", dev_prop.memoryBusWidth);
-        printf("    memoryClockRate : %d\n", dev_prop.memoryClockRate);
-        printf("    minor : %d\n", dev_prop.minor);
-        printf("    multiGpuBoardGroupID : %d\n", dev_prop.multiGpuBoardGroupID);
-        printf("    multiProcessorCount : %d\n", dev_prop.multiProcessorCount);
-        printf("    name : %s\n", dev_prop.name);
-        printf("    pageableMemoryAccess : %d\n", dev_prop.pageableMemoryAccess);
-        printf("    pageableMemoryAccessUsesHostPageTables : %d\n", dev_prop.pageableMemoryAccessUsesHostPageTables);
-        printf("    pciBusID : %d\n", dev_prop.pciBusID);
-        printf("    pciDeviceID : %d\n", dev_prop.pciDeviceID);
-        printf("    pciDomainID : %d\n", dev_prop.pciDomainID);
-        printf("    persistingL2CacheMaxSize : %d\n", dev_prop.persistingL2CacheMaxSize);
-        printf("    regsPerBlock : %d\n", dev_prop.regsPerBlock);
-        printf("    regsPerMultiprocessor : %d\n", dev_prop.regsPerMultiprocessor);
-        printf("    reservedSharedMemPerBlock : %zu\n", dev_prop.reservedSharedMemPerBlock);
-        printf("    sharedMemPerBlock : %zu\n", dev_prop.sharedMemPerBlock);
-        printf("    sharedMemPerBlockOptin : %zu\n", dev_prop.sharedMemPerBlockOptin);
-        printf("    sharedMemPerMultiprocessor : %zu\n", dev_prop.sharedMemPerMultiprocessor);
-        printf("    singleToDoublePrecisionPerfRatio : %d\n", dev_prop.singleToDoublePrecisionPerfRatio);
-        printf("    streamPrioritiesSupported : %d\n", dev_prop.streamPrioritiesSupported);
-        printf("    surfaceAlignment : %zu\n", dev_prop.surfaceAlignment);
-        printf("    tccDriver : %d\n", dev_prop.tccDriver);
-        printf("    textureAlignment : %zu\n", dev_prop.textureAlignment);
-        printf("    texturePitchAlignment : %zu\n", dev_prop.texturePitchAlignment);
-        printf("    totalConstMem : %zu\n", dev_prop.totalConstMem);
-        printf("    totalGlobalMem : %zu\n", dev_prop.totalGlobalMem);
-        printf("    unifiedAddressing : %d\n", dev_prop.unifiedAddressing);
-
-        printf("    uuid : ");
-        printCharArray(dev_prop.uuid.bytes, 16);
-        printf("\n");
-        // "   uuid : ", uuid
-        printf("    warpSize : %d", dev_prop.warpSize);
+        if (i == dimensionLength - 1)
+            printf("}}\n");
+        else
+            printf("}\n");
     }
+}
+
+__host__
+void matrixInitRandomValues(float** matrix, int dimensionLength, float maxValue){
+    for (int i = 0; i < dimensionLength * dimensionLength; i++){
+        // https://stackoverflow.com/questions/13408990/how-to-generate-random-float-number-in-c
+        (*matrix)[i] = ((float)rand()/(float)(RAND_MAX)) * maxValue;
+    }
+}
+
+// Main program
+int main()
+{
+    int dimensionLength = 3;
+    size_t arrayByteSize = dimensionLength*dimensionLength*sizeof(float);
+    float *matrix1;
+    float *matrix2;
+    float *matrixOutput;
+
+    matrix1 = (float*) malloc(arrayByteSize);
+    matrix2 = (float*) malloc(arrayByteSize);
+    matrixOutput = (float*) malloc(arrayByteSize);
+
+    matrixInitRandomValues(&matrix1, dimensionLength, 100);
+    matrixInitRandomValues(&matrix2, dimensionLength, 100);
+
+    matrixPrint(&matrix1, dimensionLength);
+
+    matrixAdd(&matrixOutput, &matrix1, &matrix2, dimensionLength);
+
+    // Verify results
+    matrixPrint(&matrix1, dimensionLength);
+
+    // Free CPU memory
+    free(matrix1);
+    free(matrix2);
+    free(matrixOutput);
+
+    printf("SUCCESS!\n");
+    return 0;
 }
