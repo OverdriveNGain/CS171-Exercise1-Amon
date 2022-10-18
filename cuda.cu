@@ -33,14 +33,19 @@ void kernel_1t1c(float *matrixOut, float *matrix1, float *matrix2, int matrixDim
 }
 
 __host__
-void matrixAdd(float*** output, float*** matrix1, float*** matrix2, int dimensionLength){
+void matrixAdd(
+    float ***output, 
+    float ***matrix1, 
+    float ***matrix2, 
+    int dimensionLength){
+
     int flattenedLength = dimensionLength*dimensionLength;
     size_t arrayByteSize = flattenedLength*sizeof(float);
 
     // Flatten input arrays
-    float* matrix1Flat = (float*) malloc(arrayByteSize);
-    float* matrix2Flat = (float*) malloc(arrayByteSize);
-    float* outputFlat = (float*) malloc(arrayByteSize);
+    float *matrix1Flat = (float*) malloc(arrayByteSize);
+    float *matrix2Flat = (float*) malloc(arrayByteSize);
+    float *outputFlat = (float*) malloc(arrayByteSize);
 
     // Copy data to flattened input arrays
     for (int i = 0; i < dimensionLength; i++){
@@ -64,9 +69,18 @@ void matrixAdd(float*** output, float*** matrix1, float*** matrix2, int dimensio
     // Launch kernel
     int threadBlockCount = ceil(flattenedLength/1024.0);
     int threadCountPerBlock = 1024;
-    // kernel_1t1e<<< threadBlockCount, threadCountPerBlock >>>(matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
-    kernel_1t1r<<< threadBlockCount, threadCountPerBlock >>>(matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
-    // kernel_1t1c<<< threadBlockCount, threadCountPerBlock >>>(matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
+
+    // Kernel function 1
+    // kernel_1t1e<<< threadBlockCount, threadCountPerBlock >>>
+    //     (matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
+
+    // Kernel function 2
+    // kernel_1t1r<<< threadBlockCount, threadCountPerBlock >>>
+    //     (matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
+
+    // Kernel function 3
+    // kernel_1t1c<<< threadBlockCount, threadCountPerBlock >>>
+    //     (matrixOutput_d, matrix1_d, matrix2_d, dimensionLength);
 
     // Copy data from device output array to flattened host array
     cudaMemcpy(outputFlat, matrixOutput_d, arrayByteSize, cudaMemcpyDeviceToHost);
@@ -90,7 +104,7 @@ void matrixAdd(float*** output, float*** matrix1, float*** matrix2, int dimensio
 }
 
 __host__
-void matrixPrint(float*** matrix, int dimensionLength){
+void matrixPrint(float ***matrix, int dimensionLength){
     for (int i = 0; i < dimensionLength; i++){
         if (i == 0)
             printf("{{ ");
@@ -112,7 +126,7 @@ void matrixPrint(float*** matrix, int dimensionLength){
 }
 
 __host__
-void matrixInitRandomValues(float*** matrix, int dimensionLength, float maxValue){
+void matrixInitRandomValues(float ***matrix, int dimensionLength, float maxValue){
     for (int i = 0; i < dimensionLength; i++){
         for (int j = 0; j < dimensionLength; j++){
             // https://stackoverflow.com/questions/13408990/how-to-generate-random-float-number-in-c
@@ -125,7 +139,7 @@ void matrixInitRandomValues(float*** matrix, int dimensionLength, float maxValue
 int main()
 {
     // Initialization of variables
-    int dimensionLength = 5000;
+    int dimensionLength = 1000;
     size_t arrayByteSizeP = dimensionLength*sizeof(float*);
     size_t arrayByteSizeF = dimensionLength*sizeof(float);
     float **matrix1;
@@ -142,7 +156,8 @@ int main()
         matrixOutput[i] = (float*) malloc(arrayByteSizeF);
     }
 
-    int repetitions = 1;
+    int repetitions = 10;
+    double time_spent = 0.0;
     for (int i = 0; i < repetitions; i++){
         // Assignment of random values to matrix 1 and 2
         matrixInitRandomValues(&matrix1, dimensionLength, 100);
@@ -154,7 +169,6 @@ int main()
 
         // Start recording time
         // https://www.techiedelight.com/find-execution-time-c-program/
-        double time_spent = 0.0;
         clock_t begin = clock();
 
         // Adding of matrices
@@ -163,7 +177,6 @@ int main()
         // Stop recording time and get elapsed time
         clock_t end = clock();
         time_spent += (double)(end - begin) / CLOCKS_PER_SEC;
-        printf("The elapsed time is %f seconds\n", time_spent);
 
         // Verifying correctness
         int incorrectCount = 0;
@@ -175,11 +188,13 @@ int main()
                 }
             }
         }
-        printf("Incorrect computations: %d\n", incorrectCount);
+        if (incorrectCount > 0)
+            printf("Incorrect elements: %d\n", incorrectCount);
 
         // Printing of output matrix
         // matrixPrint(&matrixOutput, dimensionLength);
     }
+    printf("Average elapsed time is %f seconds\n", time_spent / repetitions);
 
     // Free CPU memory
     for (int i = 0; i < dimensionLength; i++){
