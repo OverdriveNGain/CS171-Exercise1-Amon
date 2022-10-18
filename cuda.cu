@@ -33,12 +33,7 @@ void kernel_1t1c(float *matrixOut, float *matrix1, float *matrix2, int matrixDim
 }
 
 __host__
-void matrixAdd(
-    float ***output, 
-    float ***matrix1, 
-    float ***matrix2, 
-    int dimensionLength){
-
+void matrixAdd(float ***output, float ***matrix1, float ***matrix2, int dimensionLength){
     int flattenedLength = dimensionLength*dimensionLength;
     size_t arrayByteSize = flattenedLength*sizeof(float);
 
@@ -92,15 +87,9 @@ void matrixAdd(
         }
     }
 
-    // Free GPU memory
-    cudaFree(matrix1_d);
-    cudaFree(matrix2_d);
-    cudaFree(matrixOutput_d);
-
-    // Free flattened input arrays
-    free(matrix1Flat);
-    free(matrix2Flat);
-    free(outputFlat);
+    // Free all memory
+    cudaFree(matrix1_d); cudaFree(matrix2_d); cudaFree(matrixOutput_d);
+    free(matrix1Flat); free(matrix2Flat); free(outputFlat);
 }
 
 __host__
